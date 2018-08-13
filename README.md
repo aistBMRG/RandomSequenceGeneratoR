@@ -6,7 +6,7 @@ The process for generating the sequences starts from a set of random k-mers that
 
 ## Loading required R packages
 
-```r
+```
 library(dplyr)
 library(Biostrings)
 library(stringr)
@@ -72,3 +72,7 @@ while (outputCounter <= kmer_count) {
 }
 rm(tmp_kmersDF)
 ```
+
+## Generating set of full length sequences
+
+Based on the above generated k-mers, full-length random sequences 
