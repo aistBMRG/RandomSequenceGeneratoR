@@ -24,7 +24,7 @@ A set of k-mers is generated using R's `sample` command, using the following set
 
 `kmer_count` = 10000 *# number of k-mers to generate #*
 
-`kmer_baseProbabilitiesACGT` = c(0.25,0.25,0.25,0.25) *# sampling probabilities #*
+`kmer_baseProbs` = c(0.25,0.25,0.25,0.25) *# sampling probabilities for "A" "C" "T" "G" #*
 
 `kmer_GClow` = 30 *# lower bound on k-mer GC content #*
 
@@ -51,7 +51,7 @@ while (outputCounter <= kmer_count) {
                             "kmer" = paste(Biostrings::DNA_BASES[sample(1:4,
                                                                         kmer_size,
                                                                         rep = TRUE,
-                                                                        prob = kmer_baseProbabilitiesACGT)],
+                                                                        prob = kmer_baseProbs)],
                                            collapse=""))
   tmp_kmersDF <- tmp_kmersDF %>% 
     dplyr::filter(!grepl(paste(rep("A", kmer_maximumLengthHompolymers), collapse=""), kmer)) %>% 
