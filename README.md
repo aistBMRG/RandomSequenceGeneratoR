@@ -18,10 +18,18 @@ library(seqinr)
 
 A set of k-mers is generated using R's `sample` command, using the following set of parameters:
 
-`kmer_seed` = 123
-`kmer_size` = 12
-`kmer_count` = 10000
-`kmer_baseProbabilitiesACGT` = c(0.25,0.25,0.25,0.25)
-`kmer_GClow` = 30
-`kmer_GChigh` = 70
-`kmer_maximumLengthHompolymers` = 4
+`kmer_seed` = 123 # seed for reproducibility #
+
+`kmer_size` = 12 # k-mer size #
+
+`kmer_count` = 10000 # number of k-mers to generate #
+
+`kmer_baseProbabilitiesACGT` = c(0.25,0.25,0.25,0.25) # sampling probabilities #
+
+`kmer_GClow` = 30 # lower bound on k-mer GC content #
+
+`kmer_GChigh` = 70 # upper bound on k-mer GC content #
+
+`kmer_maximumLengthHompolymers` = 4 # upper bound on homopolymer length #
+
+
