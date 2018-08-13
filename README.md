@@ -6,7 +6,7 @@ The process for generating the sequences starts from a set of random k-mers that
 
 ## Loading required R packages
 
-```
+```r
 library(dplyr)
 library(Biostrings)
 library(stringr)
