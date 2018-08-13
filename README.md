@@ -90,3 +90,118 @@ Based on the above generated k-mers, full-length random sequences are then gener
 `seq_maximumLengthExactRepeatsPalindromes = 10` *# maximum length of perfect repeats, inverted repeats and palindromes #*
 
 `seq_maximumLengthHompolymers = 4` *# upper bound on homopolymer length #*
+
+Based on this set of parameters, additional script parameters are set as follows:
+
+```
+set.seed(seq_seed)
+outputCounter <- 1
+seedCounter <- 1
+seq_seedNumbers <- sample(1:(seq_count*10000), seq_count*100, replace = FALSE)
+numberKmers = seq_size / kmer_size
+seq_kmerProbs = as.vector(rep(1/kmer_count, kmer_count))
+```
+
+The sequences are then generated using the following loop:
+
+```
+seqsDF <- NULL
+while (outputCounter <= seq_count) {
+  set.seed(seq_seedNumbers[seedCounter])
+  tmp_seqsDF <- data.frame("seqID" = paste0("seq", seedCounter),
+                           "sequence" = paste(as.vector(kmersDF$kmer)[sample(1:kmer_count, 
+                                                                             numberKmers,
+                                                                             rep = FALSE, 
+                                                                             prob = seq_kmerProbabilities)], 
+                                             collapse="")) %>%
+    dplyr::mutate_if(is.factor, as.character)
+  tmp_repeats <- NULL
+  for(i in 1:(seq_size-seq_maximumLengthExactRepeatsPalindromes+1)) {
+    string = substr(tmp_seqsDF$sequence, i, i+seq_maximumLengthExactRepeatsPalindromes-1)
+    tmp_repeats <- rbind(tmp_repeats, 
+                         data.frame("position" = i,
+                                    "count_repeats" = str_count(tmp_seqsDF$sequence, 
+                                     Biostrings::toString(DNAString(string))) - 1,
+                                    "count_invertedrepeats" = str_count(tmp_seqsDF$sequence, 
+                                     Biostrings::toString(reverse(DNAString(string)))),
+                                    "count_palindromes" = str_count(tmp_seqsDF$sequence, 
+                                     Biostrings::toString(reverseComplement(DNAString(string))))))                               
+  }
+  if(max(tmp_repeats$count_repeats) > 0 | 
+     max(tmp_repeats$count_invertedrepeats) > 0 | 
+     max(tmp_repeats$count_palindromes) > 0) {
+    tmp_seqsDF <- data.frame("seqID" = as.character(), 
+                             "sequence" = as.character())
+  }
+  tmp_seqsDF <- tmp_seqsDF %>% 
+    dplyr::filter(!grepl(paste(rep("A", seq_maximumLengthHompolymers), collapse=""), sequence)) %>% 
+    dplyr::filter(!grepl(paste(rep("C", seq_maximumLengthHompolymers), collapse=""), sequence)) %>% 
+    dplyr::filter(!grepl(paste(rep("T", seq_maximumLengthHompolymers), collapse=""), sequence)) %>% 
+    dplyr::filter(!grepl(paste(rep("G", seq_maximumLengthHompolymers), collapse=""), sequence)) %>%
+    dplyr::mutate(As = str_count(sequence, "A")) %>%
+    dplyr::mutate(Cs = str_count(sequence, "C")) %>%
+    dplyr::mutate(Ts = str_count(sequence, "T")) %>%
+    dplyr::mutate(Gs = str_count(sequence, "G")) %>%
+    dplyr::mutate(GCcontent = round((Cs+Gs)/seq_size*100,1)) %>%
+    dplyr::filter(GCcontent >= seq_GClow & GCcontent <= seq_GChigh) %>%
+    dplyr::mutate_if(is.factor, as.character)
+  seqsDF <- rbind(seqsDF, tmp_seqsDF)
+  outputCounter = 1 + nrow(seqsDF)
+  seedCounter = seedCounter + 1
+}
+rm(tmp_seqsDF)
+```
+
+## Filtering of full length sequences
+
+Based on the above generated sequences, a set of filtered sequences is then generated based on filtering based on between-sequence identities, using pairwise local alignment with Biostrings's `pairwiseAlignment` command. The following parameters are used:
+
+`seqfilter_seed = 789` *# seed for reproducibility #*
+
+`seqfilter_count = 5` *# number of sequences to generate #*
+
+`seqfilter_maximumAlignmentLength = 16` *# upper bound on pairwise alignment lenghts, including indels #*
+
+Based on this set of parameters, additional script parameters are set as follows:
+
+```
+selectedSeqsDFcomplement <- seqsDF
+selectedSeqsDF <- NULL
+selectedSeqsDF_rows <- 0
+outputCounter <- 0
+n = seqfilter_count
+```
+
+The sequences are then generated using the following loop:
+
+```
+while(n > 0) {
+set.seed(seqfilter_seed)
+  selectedSeqsDF <- rbind(selectedSeqsDF,
+                          selectedSeqsDFcomplement %>%
+                            dplyr::sample_n(., n, replace = FALSE,  
+                            weight = as.vector(rep(1/nrow(selectedSeqsDFcomplement), nrow(selectedSeqsDFcomplement)))))
+  selectedSeqsDFcomplement <- selectedSeqsDFcomplement %>% 
+    dplyr::filter(., !seqID %in% as.vector(selectedSeqsDF$seqID))
+  alignmentDistances <- NULL
+  for(i in 1:(nrow(selectedSeqsDF)-1)) {
+  for(j in seq(i+1, nrow(selectedSeqsDF), 1)) {
+    localAligment <- pairwiseAlignment(pattern = selectedSeqsDF[i, 2], subject = selectedSeqsDF[j, 2],
+                                       substitutionMatrix = nucleotideSubstitutionMatrix(match = 2,
+                                       mismatch = -3, baseOnly = TRUE, type = "DNA"),
+                                       type = "local", gapOpening = 5, gapExtension = 2) 
+    alignmentDistances <- rbind(alignmentDistances,
+                                data.frame("pattern" = selectedSeqsDF[i, 1],
+                                           "subject" = selectedSeqsDF[j, 1],
+                                           "length_pattern" = nchar(localAligment@pattern),
+                                           "length_subject" = nchar(localAligment@subject),
+                                           "identity" = round(pid(localAligment, type = "PID1"), 2)))
+    }
+  }
+  alignmentDistances <- alignmentDistances %>% 
+    dplyr::filter(length_pattern >= seqfilter_maximumAlignmentLength & 
+                  length_subject >= seqfilter_maximumAlignmentLength)
+  selectedSeqsDF <- selectedSeqsDF %>% dplyr::filter(., !seqID %in% as.vector(alignmentDistances$pattern))
+  n <- seqfilter_count - nrow(selectedSeqsDF)
+}
+```
