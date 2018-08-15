@@ -97,7 +97,7 @@ Based on this set of parameters, additional script parameters are set as follows
 set.seed(seq_seed)
 outputCounter <- 1
 seedCounter <- 1
-seq_seedNumbers <- sample(1:(seq_count*10000), seq_count*100, replace = FALSE)
+seedNumbers <- sample(1:(seq_count*10000), seq_count*100, replace = FALSE)
 numberKmers = seq_size / kmer_size
 seq_kmerProbs = as.vector(rep(1/kmer_count, kmer_count))
 ```
@@ -107,7 +107,7 @@ The sequences are then generated using the following loop:
 ```
 seqsDF <- NULL
 while (outputCounter <= seq_count) {
-  set.seed(seq_seedNumbers[seedCounter])
+  set.seed(seedNumbers[seedCounter])
   tmp_seqsDF <- data.frame("seqID" = paste0("seq", seedCounter),
                            "sequence" = paste(as.vector(kmersDF$kmer)[sample(1:kmer_count, 
                                                                              numberKmers,
